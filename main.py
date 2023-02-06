@@ -1,12 +1,18 @@
 import tabula
 import pandas as pd
 import PyPDF2
+import re
 
+
+def preprocess_text(text):
+    text = re.sub(r'[^a-zA-Z]', ' ', text)
+    text = re.sub(r'\s+', ' ', text).strip()
+    return text
 
 ## Finding the number of pages in a pdf
 
 # Open the PDF file
-pdf_file = open("bank_statement.pdf", "rb")
+pdf_file = open("bank_statement_2022_12.pdf", "rb")
 
 # Create a PDF object
 pdf = PyPDF2.PdfFileReader(pdf_file)
@@ -24,7 +30,7 @@ df_final = pd.DataFrame()
 
 # Read only the part of the page specified by the area parameter
 for i in range(1,num_pages+1):
-    df = tabula.read_pdf("bank_statement.pdf", pages=i,  area=(100,75,800,800))
+    df = tabula.read_pdf("bank_statement_2022_12.pdf", pages=i,  area=(100,75,800,800))
     table = df[0]
     table.to_csv('table.txt', sep='\t', index=False)
     
@@ -34,14 +40,31 @@ for i in range(1,num_pages+1):
 df_final=df_final[1:]
 df_final.drop(1, axis=1, inplace=True)
 df_final.columns = ['Narration', 'Date', 'Withdrawal', 'Deposit', 'Closing']
-print(df_final)
+
 df_final.to_csv('statement.csv', index=False)
 
 df = pd.read_csv("statement.csv")
 
+keywords = ["LAZYPAY","CHICKEN","SWIGGYINSTAMART","VERIFY","RESTAURANT","BOOKMYSHOW","KFC", "VESTED",
+            "POLICE","JIOFIBER", "DMARTINDIA", "TEA", "AMAZON", "DOSA", "RETAIL",
+            "METRO", "INDIANCLEARINGCORPOR", "FOOD", "EAW", "GROWW", "NEXTBILLION", "ZERODHA", "IDLY", 
+            "SIMPL", "SWIGGY", "IRCTC", "REDBUS", "NWD", "PAYMENTTOROPPENTRA", "RATNADEEP", "YATRA", 
+            "UPIRET", "SOUTH", "RAZORPAY", "SAFEGOLD", "JIO", "IIT", "SALARY", "NPS", "ACH", "CLEARING",
+            "CFSIMPL", "NEFT", "ICCLMF", "PVRCINEMAS", "STORES", "URBANCOMPANY", "POS", "MF", "IMPS",
+            "PG", "DECATHLON", "REDBUSIN", "INTEREST"]
+
 # Loop through all the rows
 for i in range(len(df)):
-    print(df.loc[i, "Narration"])
+    df.loc[i, "Narration"]=preprocess_text(df.loc[i, "Narration"]) 
+    text=df.loc[i, "Narration"]
+    words = text.split() 
+    for keyword in keywords:
+        if keyword in words:
+            df.loc[i, "Keyword"] = keyword
+            break;
+        else:
+            df.loc[i, "Keyword"] = "UPI"
 
-
+print(df)
+df.to_csv('statement.csv', index=False)
 
